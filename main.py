@@ -7,10 +7,10 @@ import os
 
 app = Flask(__name__)
 
-# Function format_idr (sama seperti sebelumnya)
+# Function format_idr 
 def format_idr(amount):
     if amount == 0:
-        return "-"
+        return "0"
     try:
         return locale.format_string("%.2f", float(amount), grouping=True)
     except:
@@ -19,7 +19,6 @@ def format_idr(amount):
 # Function utama untuk get portfolio data
 def get_portfolio_data():
     try:
-        # --- KODE ANDA DIMULAI DI SINI ---
         API_KEY = "bcd058e9F7831a3B65049aBfaF275FeD61ugHSZPBR0uF5HSAEjp1eX34AFpRTEZ"
         API_SECRET = "07135804653758eBCA5424619904AFCC1FF6R9tEOWOdUyD7pcBsHs5uN4SZOvwC"
         base_url = "https://www.tokocrypto.com"
@@ -94,35 +93,40 @@ def get_portfolio_data():
             except:
                 pass
 
-        # Prepare response data
-        portfolio_data = []
+        # Prepare response data - FORMAT ARRAY SEDERHANA
+        portfolio_array = []  # Array utama
         total_portfolio_usdt = Decimal("0")
         total_portfolio_idr = Decimal("0")
+
+        # Header row sebagai index 0
+        portfolio_array.append(["ASSET", "TOTAL", "PRICE", "USD VALUE", "IDR VALUE"])
 
         for asset, total in rows:
             if asset in price_map:
                 price = price_map[asset]
                 value_usdt = total * price
-                
+        
                 if asset == "IDR":
                     value_idr = total
                 else:
                     value_idr = value_usdt * usdt_idr_price if usdt_idr_price else Decimal("0")
-                
+        
                 total_portfolio_usdt += value_usdt
                 total_portfolio_idr += value_idr
-                
-                portfolio_data.append({
-                    'asset': asset,
-                    'total': str(total),
-                    'price': str(price),
-                    'usdt_value': f"{value_usdt:.4f}",
-                    'idr_value': format_idr(value_idr)
-                })
         
+                # TAMBAHKAN SEBAGAI ARRAY (BUKAN DICTIONARY)
+                portfolio_array.append([
+                    asset,                    # Index 0
+                    str(total),               # Index 1  
+                    str(price),               # Index 2
+                    f"{value_usdt:.4f}",      # Index 3
+                    format_idr(value_idr)     # Index 4
+                ])
+
+        # Return sebagai array sederhana
         return {
             'success': True,
-            'data': portfolio_data,
+            'data': portfolio_array,  # SEKARANG ARRAY, BUKAN DICTIONARY
             'total_usdt': f"{total_portfolio_usdt:.2f}",
             'total_idr': format_idr(total_portfolio_idr),
             'rate': f"{usdt_idr_price:.2f}" if usdt_idr_price else None
@@ -139,7 +143,7 @@ def portfolio():
 
 @app.route('/')
 def home():
-    return jsonify({"message": "TokoCrypto Portfolio API", "status": "active"})
+    return jsonify({"message": "TokoCrypto Portfolio API - Array Format", "status": "active"})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000), debug=True)
