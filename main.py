@@ -46,10 +46,29 @@ def load_modal_data(file_path="modal.txt"):
 def format_idr(amount):
     if amount == 0:
         return "-"
+    
     try:
-        return locale.format_string("%.2f", float(amount), grouping=True)
+        amount_float = float(amount)
+        if amount_float == 0:
+            return "-"
+            
+        amount_str = f"{amount_float:.2f}"
+        
+        if '.' in amount_str:
+            integer_part, decimal_part = amount_str.split('.')
+        else:
+            integer_part, decimal_part = amount_str, "00"
+        
+        # Format integer part with thousand separators
+        integer_formatted = ""
+        for i, char in enumerate(reversed(integer_part)):
+            if i > 0 and i % 3 == 0:
+                integer_formatted = '.' + integer_formatted
+            integer_formatted = char + integer_formatted
+        
+        return f"{integer_formatted},{decimal_part}"
     except:
-        return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return str(amount)
 
 # Function utama untuk get portfolio data
 def get_portfolio_data():
@@ -217,3 +236,4 @@ def home():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000), debug=False)
+
