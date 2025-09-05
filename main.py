@@ -5,8 +5,16 @@ import locale
 from flask import Flask, jsonify, render_template
 import os
 from datetime import datetime
+import threading
 
 app = Flask(__name__)
+
+# Cache untuk menyimpan data portfolio dan timestamp
+portfolio_cache = {
+    'data': None,
+    'timestamp': 0,
+    'lock': threading.Lock()
+}
 
 # Function untuk load data modal dari file
 def load_modal_data(file_path="modal.txt"):
@@ -100,14 +108,49 @@ def format_asset(amount):
 
 # Function format_price_asset    
 def format_price(price: float) -> str:
-    digits_before = len(str(int(price)))
-    digits_after = max(0, 11 - digits_before)  # sisanya untuk koma
-    format_str = "{:." + str(digits_after) + "f}"
-    return format_str.format(price)
+    try:
+        if price == 0:
+            return "0"
+            
+        digits_before = len(str(int(price)))
+        digits_after = max(0, 8 - digits_before)  # Reduced to prevent overflow
+        format_str = "{:." + str(digits_after) + "f}"
+        return format_str.format(price)
+    except:
+        return str(price)
+
+# Function untuk mendapatkan harga dengan retry mechanism
+def get_price_with_retry(base_url, symbol, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            depth_url = f"{base_url}/open/v1/market/depth?symbol={symbol}&limit=5"
+            depth_resp = requests.get(depth_url, timeout=10)
+            
+            if depth_resp.status_code == 200:
+                depth_data = depth_resp.json()
+                if depth_data.get("code") == 0 and depth_data["data"]["bids"] and depth_data["data"]["asks"]:
+                    best_bid = Decimal(depth_data["data"]["bids"][0][0])
+                    best_ask = Decimal(depth_data["data"]["asks"][0][0])
+                    return (best_bid + best_ask) / Decimal("2")
+            
+            # Jika gagal, tunggu sebentar sebelum retry
+            time.sleep(0.5)
+            
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed for {symbol}: {e}")
+            time.sleep(0.5)
+    
+    return Decimal("0")
 
 # Function utama untuk get portfolio data
 def get_portfolio_data():
     try:
+        with portfolio_cache['lock']:
+            # Cek cache - jika data masih fresh (kurang dari 10 detik), kembalikan cache
+            current_time = time.time()
+            if portfolio_cache['data'] and (current_time - portfolio_cache['timestamp'] < 10):
+                return portfolio_cache['data']
+        
         modal_data = load_modal_data("modal.txt")
         
         API_KEY = "bcd058e9F7831a3B65049aBfaF275FeD61ugHSZPBR0uF5HSAEjp1eX34AFpRTEZ"
@@ -130,6 +173,10 @@ def get_portfolio_data():
 
         url = f"{base_url}/open/v1/account/spot?{query}&signature={signature}"
         headers = {"X-MBX-APIKEY": API_KEY}
+        
+        # Tambahkan delay untuk menghindari rate limiting
+        time.sleep(0.5)
+        
         resp = requests.get(url, headers=headers, timeout=30).json()
 
         rows = []
@@ -140,47 +187,28 @@ def get_portfolio_data():
                 if free > 0 or locked > 0:
                     rows.append((a["asset"], free + locked))
 
-        # Ambil harga
+        # Ambil harga USDT/IDR
         price_map = {"USDT": Decimal("1")}
         usdt_idr_price = None
         
-        try:
-            symbol = "USDT_IDR"
-            depth_url = f"{base_url}/open/v1/market/depth?symbol={symbol}&limit=5"
-            depth_resp = requests.get(depth_url, timeout=10)
-            
-            if depth_resp.status_code == 200:
-                depth_data = depth_resp.json()
-                if depth_data.get("code") == 0 and depth_data["data"]["bids"] and depth_data["data"]["asks"]:
-                    best_bid = Decimal(depth_data["data"]["bids"][0][0])
-                    best_ask = Decimal(depth_data["data"]["asks"][0][0])
-                    usdt_idr_price = (best_bid + best_ask) / Decimal("2")
-        except:
-            pass
+        usdt_idr_price = get_price_with_retry(base_url, "USDT_IDR")
+        if usdt_idr_price:
+            price_map["IDR"] = Decimal("1") / usdt_idr_price
 
         # Process asset prices
+        assets_to_fetch = []
         for asset, total in rows:
-            if asset == "USDT":
-                continue
-                
-            try:
-                if asset == "IDR":
-                    if usdt_idr_price:
-                        price_map["IDR"] = Decimal("1") / usdt_idr_price
-                    continue
-                    
-                symbol = f"{asset}_USDT"
-                depth_url = f"{base_url}/open/v1/market/depth?symbol={symbol}&limit=5"
-                depth_resp = requests.get(depth_url, timeout=10)
-                
-                if depth_resp.status_code == 200:
-                    depth_data = depth_resp.json()
-                    if depth_data.get("code") == 0 and depth_data["data"]["bids"] and depth_data["data"]["asks"]:
-                        best_bid = Decimal(depth_data["data"]["bids"][0][0])
-                        best_ask = Decimal(depth_data["data"]["asks"][0][0])
-                        price_map[asset] = (best_bid + best_ask) / Decimal("2")
-            except:
-                continue
+            if asset not in ["USDT", "IDR"] and asset not in price_map:
+                assets_to_fetch.append(asset)
+        
+        # Fetch prices untuk semua asset sekaligus dengan delay
+        for i, asset in enumerate(assets_to_fetch):
+            symbol = f"{asset}_USDT"
+            price_map[asset] = get_price_with_retry(base_url, symbol)
+            
+            # Tambahkan delay antara request untuk menghindari rate limiting
+            if i < len(assets_to_fetch) - 1:
+                time.sleep(0.3)
 
         # Prepare response data
         portfolio_data = []
@@ -189,7 +217,7 @@ def get_portfolio_data():
         total_modal_usdt = Decimal("0")
 
         for asset, total in rows:
-            if asset in price_map:
+            if asset in price_map and price_map[asset] > 0:
                 price = price_map[asset]
                 value_usdt = total * price
                 
@@ -214,22 +242,23 @@ def get_portfolio_data():
                 
                 portfolio_data.append({
                     'asset': asset,
-                    'total': total,  # Simpan nilai asli untuk sorting
+                    'total': total,
                     'total_formatted': format_asset(total),
-                    'price': format_price(price),
-                    'usdt_value': value_usdt,  # Simpan nilai asli untuk sorting
+                    'price': price,
+                    'price_formatted': format_price(price),
+                    'usdt_value': value_usdt,
                     'usdt_value_formatted': f"{value_usdt:.4f}",
-                    'idr_value': value_idr,  # Simpan nilai asli untuk sorting
+                    'idr_value': value_idr,
                     'idr_value_formatted': format_idr(value_idr),
-                    'modal': modal_amount,  # Simpan nilai asli untuk sorting
+                    'modal': modal_amount,
                     'modal_formatted': f"{modal_amount:.2f}",
-                    'profit_usdt': profit_usdt,  # Simpan nilai asli untuk sorting
+                    'profit_usdt': profit_usdt,
                     'profit_usdt_formatted': f"{profit_usdt:.2f}",
-                    'profit_idr': profit_idr,  # Simpan nilai asli untuk sorting
+                    'profit_idr': profit_idr,
                     'profit_idr_formatted': format_idr(profit_idr)
                 })
         
-        # MODIFIKASI: Urutkan berdasarkan total asset terbanyak (nilai USDT)
+        # Urutkan berdasarkan total asset terbanyak (nilai USDT)
         portfolio_data.sort(key=lambda x: x['usdt_value'], reverse=True)
         
         # Kembalikan data yang diformat untuk response
@@ -238,11 +267,12 @@ def get_portfolio_data():
             formatted_portfolio_data.append({
                 'asset': item['asset'],
                 'total': item['total_formatted'],
-                'price': item['price'],
+                'price': item['price_formatted'],
                 'usdt_value': item['usdt_value_formatted'],
                 'idr_value': item['idr_value_formatted'],
                 'modal': item['modal_formatted'],
-                'profit_usdt': item['profit_usdt_formatted'],
+                'profit_usdt': item['profit_usdt'],  # Simpan nilai asli untuk conditional formatting
+                'profit_usdt_formatted': item['profit_usdt_formatted'],
                 'profit_idr': item['profit_idr_formatted']
             })
         
@@ -250,7 +280,7 @@ def get_portfolio_data():
         total_profit_usdt = total_portfolio_usdt - total_modal_usdt
         total_profit_idr = total_profit_usdt * usdt_idr_price if usdt_idr_price else Decimal("0")
         
-        return {
+        result = {
             'success': True,
             'data': formatted_portfolio_data,
             'total_usdt': f"{total_portfolio_usdt:.2f}",
@@ -258,10 +288,24 @@ def get_portfolio_data():
             'total_modal': f"{total_modal_usdt:.2f}",
             'total_profit_usdt': f"{total_profit_usdt:.2f}",
             'total_profit_idr': format_idr(total_profit_idr),
-            'rate': f"{usdt_idr_price:.2f}" if usdt_idr_price else None
+            'rate': f"{usdt_idr_price:.2f}" if usdt_idr_price else None,
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
+        # Update cache
+        with portfolio_cache['lock']:
+            portfolio_cache['data'] = result
+            portfolio_cache['timestamp'] = time.time()
+        
+        return result
+        
     except Exception as e:
+        print(f"Error in get_portfolio_data: {e}")
+        # Coba kembalikan cache jika ada
+        with portfolio_cache['lock']:
+            if portfolio_cache['data']:
+                return portfolio_cache['data']
+        
         return {'success': False, 'error': str(e)}
 
 # Route untuk JSON API
@@ -283,7 +327,7 @@ def home():
                              total_profit_usdt=data['total_profit_usdt'],
                              total_profit_idr=data['total_profit_idr'],
                              rate=data.get('rate'),
-                             now=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                             now=data.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     else:
         return render_template('main.html', 
                              data=[],
