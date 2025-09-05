@@ -198,26 +198,53 @@ def get_portfolio_data():
                 else:
                     value_idr = value_usdt * usdt_idr_price if usdt_idr_price else Decimal("0")
                 
-                total_portfolio_usdt += value_usdt
-                total_portfolio_idr += value_idr
-                
                 # Hitung modal dan profit per aset
                 modal_amount = modal_data.get(asset, Decimal("0"))
+                
+                # Abaikan aset dengan modal 0
+                if modal_amount == 0:
+                    continue
+                
                 profit_usdt = value_usdt - modal_amount
                 profit_idr = profit_usdt * usdt_idr_price if usdt_idr_price else Decimal("0")
                 
+                total_portfolio_usdt += value_usdt
+                total_portfolio_idr += value_idr
                 total_modal_usdt += modal_amount
                 
                 portfolio_data.append({
                     'asset': asset,
-                    'total': format_asset(total),
+                    'total': total,  # Simpan nilai asli untuk sorting
+                    'total_formatted': format_asset(total),
                     'price': format_price(price),
-                    'usdt_value': f"{value_usdt:.4f}",
-                    'idr_value': format_idr(value_idr),
-                    'modal': f"{modal_amount:.2f}",
-                    'profit_usdt': f"{profit_usdt:.2f}",
-                    'profit_idr': format_idr(profit_idr)
+                    'usdt_value': value_usdt,  # Simpan nilai asli untuk sorting
+                    'usdt_value_formatted': f"{value_usdt:.4f}",
+                    'idr_value': value_idr,  # Simpan nilai asli untuk sorting
+                    'idr_value_formatted': format_idr(value_idr),
+                    'modal': modal_amount,  # Simpan nilai asli untuk sorting
+                    'modal_formatted': f"{modal_amount:.2f}",
+                    'profit_usdt': profit_usdt,  # Simpan nilai asli untuk sorting
+                    'profit_usdt_formatted': f"{profit_usdt:.2f}",
+                    'profit_idr': profit_idr,  # Simpan nilai asli untuk sorting
+                    'profit_idr_formatted': format_idr(profit_idr)
                 })
+        
+        # MODIFIKASI: Urutkan berdasarkan total asset terbanyak (nilai USDT)
+        portfolio_data.sort(key=lambda x: x['usdt_value'], reverse=True)
+        
+        # Kembalikan data yang diformat untuk response
+        formatted_portfolio_data = []
+        for item in portfolio_data:
+            formatted_portfolio_data.append({
+                'asset': item['asset'],
+                'total': item['total_formatted'],
+                'price': item['price'],
+                'usdt_value': item['usdt_value_formatted'],
+                'idr_value': item['idr_value_formatted'],
+                'modal': item['modal_formatted'],
+                'profit_usdt': item['profit_usdt_formatted'],
+                'profit_idr': item['profit_idr_formatted']
+            })
         
         # Hitung total profit
         total_profit_usdt = total_portfolio_usdt - total_modal_usdt
@@ -225,7 +252,7 @@ def get_portfolio_data():
         
         return {
             'success': True,
-            'data': portfolio_data,
+            'data': formatted_portfolio_data,
             'total_usdt': f"{total_portfolio_usdt:.2f}",
             'total_idr': format_idr(total_portfolio_idr),
             'total_modal': f"{total_modal_usdt:.2f}",
