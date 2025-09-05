@@ -148,6 +148,7 @@ def get_portfolio_data():
             symbol = "USDT_IDR"
             depth_url = f"{base_url}/open/v1/market/depth?symbol={symbol}&limit=5"
             depth_resp = requests.get(depth_url, timeout=10)
+            time.sleep(0.05)
             
             if depth_resp.status_code == 200:
                 depth_data = depth_resp.json()
@@ -172,6 +173,7 @@ def get_portfolio_data():
                 symbol = f"{asset}_USDT"
                 depth_url = f"{base_url}/open/v1/market/depth?symbol={symbol}&limit=5"
                 depth_resp = requests.get(depth_url, timeout=10)
+                time.sleep(0.05)
                 
                 if depth_resp.status_code == 200:
                     depth_data = depth_resp.json()
@@ -179,7 +181,6 @@ def get_portfolio_data():
                         best_bid = Decimal(depth_data["data"]["bids"][0][0])
                         best_ask = Decimal(depth_data["data"]["asks"][0][0])
                         price_map[asset] = (best_bid + best_ask) / Decimal("2")
-                        time.sleep(0.03)
             except:
                 continue
 
