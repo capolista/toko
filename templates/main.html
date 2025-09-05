@@ -250,13 +250,13 @@
                 <div class="col-6">
                     <div class="stat-box">
                         <div class="title">Jumlah USD (Equity)</div>
-                        <div class="value text-success">$ 552.95</div>
+                        <div class="value">$ {{ total_usdt }}</div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="stat-box">
                         <div class="title">Jumlah Rupiah (Equity)</div>
-                        <div class="value text-danger">$ 86.45</div>
+                        <div class="value">Rp {{ total_idr }}</div>
                     </div>
                 </div>
             </div>
@@ -264,13 +264,15 @@
                 <div class="col-6">
                     <div class="stat-box">
                         <div class="title">Total Modal</div>
-                        <div class="value">$ 53.25</div>
+                        <div class="value">$ {{ total_modal }}</div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="stat-box">
                         <div class="title">Profit</div>
-                        <div class="value">$ 120.99</div>
+						<div class="value {% if total_profit_usdt|float > 0 %}value text-success{% elif total_profit_usdt|float < 0 %}value text-danger{% endif %}">
+                            $ {{ total_profit_usdt }}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -287,30 +289,37 @@
             <div class="transactions">
 			{% for item in data %}
 			<a class="item">
-				<div class="left">
-					<div class="price text-black">Aset</div>
-					<div class="price text-black">Qty&nbsp; &nbsp;</div>
-					<div class="price text-black">Harga&nbsp; &nbsp;</div>
-					<div class="price text-black">Equity $&nbsp; &nbsp;</div>
-					<div class="price text-black">Equity IDR&nbsp; &nbsp;</div>
-					<div class="price text-black">Modal&nbsp; $&nbsp;</div>
-					<div class="price text-black">Profit&nbsp; $&nbsp;</div>
-					<div class="price text-black">Profit&nbsp; IDR&nbsp;</div>
+			<div class="left">
+			  <div class="price text-black">Aset</div>
+			  <div class="price text-black">Qty&nbsp; &nbsp;</div>
+			  <div class="price text-black">Harga&nbsp; &nbsp;</div>
+			  <div class="price text-black">Equity $&nbsp; &nbsp;</div>
+			  <div class="price text-black">Equity IDR&nbsp; &nbsp;</div>
+			  <div class="price text-black">Modal&nbsp; $&nbsp;</div>
+			  <div class="price text-black">Profit&nbsp; $&nbsp;</div>
+			  <div class="price text-black">Profit&nbsp; IDR&nbsp;</div>
+		    </div>
+			
+			<div class="left">
+				<div class="price text-black">:</div>
+					<div class="price text-black">:&nbsp; &nbsp;</div>
+					<div class="price text-black">:&nbsp; &nbsp;</div>
+					<div class="price text-black">:&nbsp; &nbsp;</div>
+					<div class="price text-black">:&nbsp; &nbsp;</div>
+					<div class="price text-black">:&nbsp;</div>
+					<div class="price text-black">:&nbsp;</div>
+					<div class="price text-black">:&nbsp;</div>
 				</div>
-				<div class="right">
-					<div class="price text-black">{{ item.asset }}</div>
-					<div class="price text-black">{{ item.total }}&nbsp; &nbsp;</div>
-					<div class="price text-black">$ {{ item.price }}&nbsp; &nbsp;</div>
-					<div class="price text-black">$ {{ item.usdt_value }}&nbsp; &nbsp;</div>
-					<div class="price text-black">Rp {{ item.idr_value }}&nbsp; &nbsp;</div>
-					<div class="price text-black">$ {{ item.modal }}&nbsp; &nbsp;</div>
-					<div class="{% if item.profit_usdt|float > 0 %}price text-success{% elif item.profit_usdt|float < 0 %}price text-danger{% endif %}">
-						$ {{ item.profit_usdt }}&nbsp; &nbsp;
-					</div>
-					<div class="{% if item.profit_usdt|float > 0 %}price text-success{% elif item.profit_usdt|float < 0 %}price text-danger{% endif %}">
-						Rp {{ item.profit_idr }}&nbsp; &nbsp;
-					</div>
-				</div>
+<div class="right">
+	    <div class="price text-black">{{ item.asset }}</div>
+				  <div class="price text-black">{{ item.total }}&nbsp; &nbsp;</div>
+				  <div class="price text-black">$ {{ item.price }}&nbsp; &nbsp;</div>
+				  <div class="price text-black">$ {{ item.usdt_value }}&nbsp; &nbsp;</div>
+				  <div class="price text-black">Rp {{ item.idr_value }}&nbsp; &nbsp;</div>
+				  <div class="price text-black">$ {{ item.modal }}&nbsp; &nbsp;</div>
+				  <div class="{% if item.profit_usdt|float > 0 %}price text-success{% elif item.profit_usdt|float < 0 %}price text-danger{% endif %}"> $ {{ item.profit_usdt }}&nbsp; &nbsp; </div>
+				  <div class="{% if item.profit_usdt|float > 0 %}price text-success{% elif item.profit_usdt|float < 0 %}price text-danger{% endif %}"> Rp {{ item.profit_idr }}&nbsp; &nbsp; </div>
+		    </div>
                 </a>
 				{% else %}
                 <a class="item">
