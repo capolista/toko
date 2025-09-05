@@ -283,37 +283,44 @@
                 <h2 class="title">Data Assets</h2>
 			</div>
 			<!-- Data Assets -->
-                {% for item in data %}
-            <div class="transactions"><a href="app-transaction-detail.html" class="item">
-            <div class="left">
-              <div class="price text-black">Aset</div>
-              <div class="price text-black">Qty&nbsp; &nbsp;</div>
-              <div class="price text-black">Harga&nbsp; &nbsp;</div>
-              <div class="price text-black">Equity $&nbsp; &nbsp;</div>
-              <div class="price text-black">Equity IDR&nbsp; &nbsp;</div>
-              <div class="price text-black">Modal&nbsp; $&nbsp;</div>
-              <div class="price text-black">Profit&nbsp; $&nbsp;</div>
-              <div class="price text-black">Profit&nbsp; IDR&nbsp;</div>
-            </div>
-		<div class="right">
-        <div class="price text-black">{{ item.asset }}</div>
-              <div class="price text-black">{{ item.total }}&nbsp; &nbsp;</div>
-              <div class="price text-black">$ {{ item.price }}&nbsp; &nbsp;</div>
-              <div class="price text-black">$ {{ item.usdt_value }}&nbsp; &nbsp;</div>
-              <div class="price text-black">Rp {{ item.idr_value }}&nbsp; &nbsp;</div>
-              <div class="price text-black">$ {{ item.modal }}&nbsp; &nbsp;</div>
-              <div class="price text-black">$ {{ item.profit_usdt }}&nbsp; &nbsp;</div>
-              <div class="price text-black">Rp {{ item.profit_idr }}&nbsp; &nbsp;</div>
-            </div>
-            </a>
-          </div>
-		  {% else %}
+                
+            <div class="transactions">
+			{% for item in data %}
+			<a class="item">
+				<div class="left">
+					<div class="price text-black">Aset</div>
+					<div class="price text-black">Qty&nbsp; &nbsp;</div>
+					<div class="price text-black">Harga&nbsp; &nbsp;</div>
+					<div class="price text-black">Equity $&nbsp; &nbsp;</div>
+					<div class="price text-black">Equity IDR&nbsp; &nbsp;</div>
+					<div class="price text-black">Modal&nbsp; $&nbsp;</div>
+					<div class="price text-black">Profit&nbsp; $&nbsp;</div>
+					<div class="price text-black">Profit&nbsp; IDR&nbsp;</div>
+				</div>
+				<div class="right">
+					<div class="price text-black">{{ item.asset }}</div>
+					<div class="price text-black">{{ item.total }}&nbsp; &nbsp;</div>
+					<div class="price text-black">$ {{ item.price }}&nbsp; &nbsp;</div>
+					<div class="price text-black">$ {{ item.usdt_value }}&nbsp; &nbsp;</div>
+					<div class="price text-black">Rp {{ item.idr_value }}&nbsp; &nbsp;</div>
+					<div class="price text-black">$ {{ item.modal }}&nbsp; &nbsp;</div>
+					<div class="{% if item.profit_usdt|float > 0 %}price text-success{% elif item.profit_usdt|float < 0 %}price text-danger{% endif %}">
+						$ {{ item.profit_usdt }}&nbsp; &nbsp;
+					</div>
+					<div class="{% if item.profit_usdt|float > 0 %}price text-success{% elif item.profit_usdt|float < 0 %}price text-danger{% endif %}">
+						Rp {{ item.profit_idr }}&nbsp; &nbsp;
+					</div>
+				</div>
+                </a>
+				{% else %}
                 <a class="item">
                     <div class="detail">
                         <div>Tidak ada data portfolio</div>
                     </div>
                 </a>
                 {% endfor %}
+          </div>
+		  
 </div>
         <!-- * Transactions -->
 
