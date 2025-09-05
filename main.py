@@ -70,6 +70,41 @@ def format_idr(amount):
     except:
         return str(amount)
 
+# Function format_asset    
+def format_asset(amount):
+    if amount == 0:
+        return "-"
+    
+    try:
+        amount_float = float(amount)
+        if amount_float == 0:
+            return "-"
+            
+        amount_str = f"{amount_float:.2f}"
+        
+        if '.' in amount_str:
+            integer_part, decimal_part = amount_str.split('.')
+        else:
+            integer_part, decimal_part = amount_str, "00"
+        
+        # Format integer part with thousand separators
+        integer_formatted = ""
+        for i, char in enumerate(reversed(integer_part)):
+            if i > 0 and i % 3 == 0:
+                integer_formatted = '.' + integer_formatted
+            integer_formatted = char + integer_formatted
+        
+        return f"{integer_formatted},{decimal_part}"
+    except:
+        return str(amount)
+
+# Function format_price_asset    
+def format_price(price: float) -> str:
+    digits_before = len(str(int(price)))
+    digits_after = max(0, 11 - digits_before)  # sisanya untuk koma
+    format_str = "{:." + str(digits_after) + "f}"
+    return format_str.format(price)
+
 # Function utama untuk get portfolio data
 def get_portfolio_data():
     try:
@@ -175,8 +210,8 @@ def get_portfolio_data():
                 
                 portfolio_data.append({
                     'asset': asset,
-                    'total': str(total),
-                    'price': str(price),
+                    'total': format_asset(total),
+                    'price': format_price(price),
                     'usdt_value': f"{value_usdt:.4f}",
                     'idr_value': format_idr(value_idr),
                     'modal': f"{modal_amount:.2f}",
@@ -236,4 +271,3 @@ def home():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000), debug=False)
-
