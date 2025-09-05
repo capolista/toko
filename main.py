@@ -155,7 +155,7 @@ def get_portfolio_data():
                     best_bid = Decimal(depth_data["data"]["bids"][0][0])
                     best_ask = Decimal(depth_data["data"]["asks"][0][0])
                     usdt_idr_price = (best_bid + best_ask) / Decimal("2")
-                    time.sleep(0.2)
+                    time.sleep(0.5)
         except:
             pass
 
@@ -180,7 +180,7 @@ def get_portfolio_data():
                         best_bid = Decimal(depth_data["data"]["bids"][0][0])
                         best_ask = Decimal(depth_data["data"]["asks"][0][0])
                         price_map[asset] = (best_bid + best_ask) / Decimal("2")
-                        time.sleep(0.2)
+                        time.sleep(0.5)
             except:
                 continue
 
@@ -300,3 +300,4 @@ def home():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000), debug=False)
+
